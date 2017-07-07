@@ -2,7 +2,7 @@
 
 **Opinionated exponential backoff retry driver**
 
-[![npm status](http://img.shields.io/npm/v/@kessler/exponential-backoff.svg?style=flat-square)](https://www.npmjs.org/package/@kessler/exponential-backoff) [![Travis build status](https://img.shields.io/travis/kessler/@kessler/exponential-backoff.svg?style=flat-square&label=travis)](http://travis-ci.org/kessler/@kessler/exponential-backoff) [![Dependency status](https://img.shields.io/david/kessler/@kessler/exponential-backoff.svg?style=flat-square)](https://david-dm.org/kessler/@kessler/exponential-backoff)
+[![npm status](http://img.shields.io/npm/v/@kessler/exponential-backoff.svg?style=flat-square)](https://www.npmjs.org/package/@kessler/exponential-backoff) [![Travis build status](https://img.shields.io/travis/kessler/exponential-backoff.svg?style=flat-square&label=travis)](http://travis-ci.org/kessler/exponential-backoff) [![Dependency status](https://img.shields.io/david/kessler/@kessler/exponential-backoff.svg?style=flat-square)](https://david-dm.org/kessler/@kessler/exponential-backoff)
 
 ### example
 
