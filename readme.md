@@ -36,7 +36,7 @@ backoff(work, done)
 
 ```
 
-### passing parameters to the `work` function
+### passing arguments to the `work` function
 
 ```js
 const exponentialBackoff = require('@kessler/exponential-backoff')
@@ -53,7 +53,7 @@ backoff(work, 1, 2, 3, done)
 
 ```
 
-### passing parameters from the `work` function to the `done` function
+### passing arguments from the `work` function to the `done` function
 
 ```js
 const exponentialBackoff = require('@kessler/exponential-backoff')
