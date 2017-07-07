@@ -1,0 +1,31 @@
+{
+  "name": "@kessler/exponential-backoff",
+  "version": "0.0.1",
+  "description": "Opinionated exponential backoff retry driver",
+  "license": "MIT",
+  "author": {
+    "name": "Yaniv Kessler",
+    "email": "yanivk@gmail.com"
+  },
+  "scripts": {
+    "test": "mocha test/**/*.js"
+  },
+  "dependencies": {
+    "debug": "^2.6.8",
+    "random-js": "^1.0.8"
+  },
+  "devDependencies": {
+    "chai": "^4.0.2",
+    "mocha": "~3.4.2"
+  },
+  "keywords": [
+    "backoff",
+    "exponential",
+    "exponential-backoff",
+    "retry"
+  ],
+  "engines": {
+    "node": ">=0.10.0",
+    "npm": ">=2.0.0"
+  }
+}
