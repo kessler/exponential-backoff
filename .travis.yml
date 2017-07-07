@@ -1,3 +1,11 @@
 language: node_js
 node_js:
-  - "7"
+- '7'
+deploy:
+  provider: npm
+  email: yanivk@gmail.com
+  api_key:
+    secure: aGmT9YvPB9cpCwf6S0fepKq06/YxBL5kqTG2fvZDin4f86yPlGPE7IeCp3p8mrLCLKJeZp7TIrRV/k2JL2vxR+/DUhntjFPWXRNSolY2kbXBvwoXw470XXwdG8+8KC8UaXsMITs1Icijo934LVLIvvJUS8A1FFwmJjW1hCVYxoBVkiH/h/XK54LEQ62uHhfpDtkmFF178+DkjXp387uQ+Wt+dsGKV7TcX+mvdg1CaaLLa6ff+ny44SyAgwvkLGNu6/vIQLxUU2gRMsmXfzyHdKf3R0U36F/6KYtE95qs8MvO8FMQjsRcIuY3Xfz2TkX9N+F4z2XJ7PhM/ZCLbzAkiEBh89rjQq//Hmh2zry5AszeM4VU/kaFikWC44pFoxZ/iGX1vIw5fgYS0OR1l9JoG8LCAN8y6RiRs0YnhofLE+yTQNi49G2blq0jSzC9SWp4mtZnJXCjkBSnzRlBWkmRD1txEWV+VVPf56xUy6F9A0LnHoIt6QvFLNNMmqp4lN6j48p1o7tkna8npGndTu/mHoWfLaa07FE24d93Gf0LzsNcUWAfxJPJCqnRgxkM1yn+sCCZqAU0XpsgXgg3DmGxHq6ScGjSOxef04twcGkAx97zvKrVv3NbqPhevs/ZBH+KAfPYAFqaQoNX50z8azNmOlfTU473etfg3SyC4JPANb0=
+  on:
+    tags: true
+    branch: master
