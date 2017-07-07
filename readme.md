@@ -49,6 +49,7 @@ let work = (one, two, three, cb) => {
 }
 
 let done = ...
+
 backoff(work, 1, 2, 3, done)
 
 ```
@@ -82,6 +83,7 @@ let backoff = exponentialBackoff({
     exponent: 2, // base exponent for backoff algorithm, default is 2
     unrefTimer: false // we use setTimeout() timer, setting this to true will cause setTimeout().unref() to be called
 })
+
 ```
 
 ## license
