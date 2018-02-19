@@ -11,7 +11,7 @@ const debug = require('debug')(name)
  *	not wait for these timers to finish
  *
  */
-module.exports = (options) => exponentialBackoff(options)
+module.exports = (options) => exponentialBackoff(options || {})
 
 function exponentialBackoff({ delayInterval = 100, exponent = 2, unrefTimer = false, _seed }) {
 	let engine
