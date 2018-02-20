@@ -93,22 +93,6 @@ describe('@kessler/exponential-backoff', () => {
 			backoff(work, callback)
 		})
 
-		it('but will not provide a retry function if the operation is successful', (done) => {
-			let work = (cb) => {
-				cb()
-			}
-
-			let callback = (err, retry, retryCount) => {
-				if (err) return done(err)
-
-				expect(retry).to.be.null
-
-				done()
-			}
-
-			backoff(work, callback)
-		})
-
 		// random generator is seeded to provide the same "random"
 		// delay each test
 		it('using exponential backoff algorithm', function(done) {

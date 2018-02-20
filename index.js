@@ -46,7 +46,7 @@ function exponentialBackoff({ delayInterval = 100, exponent = 2, unrefTimer = fa
 				return cb(err, ...args, schedule, retryCount)
 			}
 
-			cb(null, ...args, null, retryCount)
+			cb(null, ...args, schedule, retryCount)
 		})
 
 		function schedule() {
