@@ -35,6 +35,29 @@ describe('@kessler/exponential-backoff', () => {
 		backoff(work, 'a1', 'a2', done)
 	})
 
+	it('retry a function with arguments', (done) => {
+		let count = 0
+		let work = (a1, a2, cb) => {
+			expect(a1).to.equal('a1')
+			expect(a2).to.equal('a2')
+			if (count++ === 0) {
+				return cb(new Error())
+			}
+
+			cb()
+		}
+
+		backoff(work, 'a1', 'a2', (err, retry, retryCount) => {
+
+			if (retryCount === 1) {
+				expect(count).to.equal(1)
+				return retry()
+			}
+
+			done()
+		})
+	})
+
 	it('reports the retryCount in the callback as the last parameter', (done) => {
 		let work = (cb) => {
 			cb(null, 3)

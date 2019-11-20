@@ -54,7 +54,8 @@ function exponentialBackoff({ delayInterval = 100, exponent = 2, unrefTimer = fa
 			debug('scheduling retry in %d %dms', delay)
 
 			let timer = setTimeout(() => {
-				execute(work, cb)
+				args.push(cb)
+				execute(work, ...args)
 			}, delay)
 
 			if (unrefTimer) {
