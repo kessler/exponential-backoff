@@ -1,152 +1,138 @@
-'use strict'
+const test = require('ava')
+const backoff = require('./index')
 
-const { expect } = require('chai')
-const exponentialBackoff = require('./index')
+test('executes a synchronous function', async t => {
+	t.is(await backoff(() => 'result'), 'result')
+})
 
-describe('@kessler/exponential-backoff', () => {
-
-	let backoff
-
-	it('throws an error if caller does not provide a callback', () => {
-		expect(() => {
-			backoff()
-		}).to.throw('must provide a callback as the last argument')
+test('executes an asynchronous function', async t => {
+	const work = backoff(async () => {
+		await sleep(10)
+		return 'result'
 	})
 
-	it('executes a function without delay (i.e synchronously)', (done) => {
-		let executed = false
-		let work = (cb) => {
-			executed = true
-			cb()
-		}
+	t.is(await work, 'result')
+})
 
-		backoff(work, done)
+test('after maxAttempts an error is thrown', async t => {
+	let count = 0
+	const work = backoff(async () => {
+		count++
+		throw new Error('123')
+	}, { maxAttempts: 5 })
 
-		expect(executed).to.be.true
-	})
+	await t.throwsAsync(async () => {
+		await work
+	}, { instanceOf: Error, message: 'operation failed, exceeded maximum attempts' })
 
-	it('executes a function with arguments', (done) => {
-		let work = (a1, a2, cb) => {
-			expect(a1).to.equal('a1')
-			expect(a2).to.equal('a2')
-			cb()
-		}
+	t.is(count, 5)
+})
 
-		backoff(work, 'a1', 'a2', done)
-	})
+test('if throwMaxAttemptsError flag is set to false then no error is thrown when maxAttempts is exceeded', async t => {
+	const work = backoff(async () => {
+		throw new Error('123')
+	}, { maxAttempts: 5, throwMaxAttemptsError: false })
 
-	it('retry a function with arguments', (done) => {
-		let count = 0
-		let work = (a1, a2, cb) => {
-			expect(a1).to.equal('a1')
-			expect(a2).to.equal('a2')
-			if (count++ === 0) {
-				return cb(new Error())
-			}
-
-			cb()
-		}
-
-		backoff(work, 'a1', 'a2', (err, retry, retryCount) => {
-
-			if (retryCount === 1) {
-				expect(count).to.equal(1)
-				return retry()
-			}
-
-			done()
-		})
-	})
-
-	it('reports the retryCount in the callback as the last parameter', (done) => {
-		let work = (cb) => {
-			cb(null, 3)
-		}
-
-		let callback = (err, p1, retry, retryCount) => {
-			if (err) return done(err)
-
-			expect(retryCount).to.equal(1)
-
-			done()
-		}
-
-		backoff(work, callback)
-	})
-
-	it('passes the arguments from work function to the callback', (done) => {
-		let work = (cb) => {
-			cb(null, 'a', 'b')
-		}
-
-		let callback = (err, p1, p2) => {
-			if (err) return done(err)
-
-			expect(p1).to.equal('a')
-			expect(p2).to.equal('b')
-
-			done()
-		}
-
-		backoff(work, callback)
-	})
-
-	describe('retries the operation if it fails', () => {
-		let customError = new Error()
-
-		it('by providing a retry function to the caller\'s callback', (done) => {
-			let work = (cb) => {
-				cb(customError)
-			}
-
-			let maxRetries = 2
-
-			let callback = (err, retry, retryCount) => {
-				if (err && retryCount < maxRetries) {
-					expect(retry).to.be.an.instanceOf(Function)
-					expect(err).to.equal(customError)
-					return retry()
-				}
-
-				expect(retryCount).to.equal(2)
-
-				done()
-			}
-
-			backoff(work, callback)
-		})
-
-		// random generator is seeded to provide the same "random"
-		// delay each test
-		it('using exponential backoff algorithm', function(done) {
-			this.timeout(5000)
-
-			let work = (cb) => {
-				cb(customError)
-			}
-
-			let maxRetries = 5
-
-			let start = Date.now()
-			let expectedFlooredDelays = [0, 100, 400, 800]
-
-			let callback = (err, retry, retryCount) => {
-				if (err && retryCount < maxRetries) {
-
-					let delay = Date.now() - start
-					let flooredDelay = Math.floor(delay / 100) * 100
-					expect(flooredDelay).to.equal(expectedFlooredDelays[retryCount - 1])
-					return retry()
-				}
-
-				done()
-			}
-
-			backoff(work, callback)
-		})
-	})
-
-	beforeEach(() => {
-		backoff = exponentialBackoff({ _seed: 1 })
+	await t.notThrowsAsync(async () => {
+		await work
 	})
 })
+
+test('execute a function multiple times if it throws an error', async t => {
+	const maxAttempts = 5
+	let actualRetryCount = 0
+
+
+	const work = backoff((attempt) => {
+		if (attempt === maxAttempts) {
+			return 'result'
+		}
+
+		actualRetryCount++
+		throw new Error()
+	})
+
+	const result = await work
+
+	t.is(result, 'result')
+	t.is(actualRetryCount, maxAttempts)
+})
+
+test('iteration API', async t => {
+	const maxAttempts = 5
+	let actualRetryCount = 0
+
+	const iterator = backoff.iterator((attempt) => {
+		if (attempt === maxAttempts) {
+			return 'result'
+		}
+
+		throw new Error('blabla')
+	})
+
+	for await (let attempt of iterator) {
+		actualRetryCount++
+		if (attempt === 3) break
+	}
+
+	t.is(actualRetryCount, 3)
+
+	for await (let attempt of iterator) {
+		actualRetryCount++
+	}
+
+	t.is(actualRetryCount, maxAttempts)
+
+	t.is(iterator.result, 'result')
+})
+
+test('during iteration lastError is provided', async t => {
+	const maxAttempts = 5
+	let actualRetryCount = 0
+
+	const iterator = backoff.iterator((attempt) => {
+		if (attempt === maxAttempts) {
+			return 'result'
+		}
+
+		throw new Error('blabla')
+	})
+
+	for await (let attempt of iterator) {
+		if (attempt === 0) {
+			t.is(iterator.lastError, undefined)
+		} else {
+			t.is(iterator.lastError.message, 'blabla')
+		}
+	}
+})
+
+test('iteration will stop and an error is thrown after maxAttempts', async t => {
+
+	const iterator = backoff.iterator((attempt) => {
+		throw new Error('blabla')
+	}, { maxAttempts: 5 })
+
+	await t.throwsAsync(async () => {
+		for await (let attempt of iterator) {}
+	}, { instanceOf: Error, message: 'operation failed, exceeded maximum attempts' })
+})
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/*
+
+const work = backoff(async () => {
+		await sleep(2000)
+		console.log('trying now...')
+		throw new Error()
+	})
+
+	for await (let attempt of work) {
+		console.log(attempt, 'asdsasdasdsds')
+	}
+
+	t.pass()
+ */

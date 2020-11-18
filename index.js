@@ -4,68 +4,150 @@ const { name } = require('./package.json')
 const Random = require('random-js')
 const debug = require('debug')(name)
 
+module.exports = async (work, options) => {
+	const iterator = factory(options)(work)
+	for await (let attempt of iterator) {}
+	return iterator.result
+}
+
 /**
- *	@param {number} delayInterval - minimum delay unit, exponentialBackoff() * intervalInMillis === delay
- *	@param {number} exponent - base exponent for backoff algorithm
- *	@param {boolean} unrefTimer - retry uses setTimeout() timer, by default it will be unrefed, so the process will
- *	not wait for these timers to finish
+ *	init code will only run once, work function can be changed many times. Good for code hotspots
+ *	or for using the iteration interface.
+ */
+module.exports.iterator = (work, options) => {
+	return factory(options)(work)
+}
+
+module.exports.cached = (options) => {
+	const createIterator = factory(options)
+	return async (work) => {
+		const iterator = createIterator(work)
+		for await (let attempt of iterator) {console.log(attempt)}
+		return iterator.result
+	}
+}
+
+module.exports.cachedIterator = (options) => {
+	return factory(options)
+}
+
+
+/**
+ *	@param {number} [maxAttempts=100] - maximum number of attempts before giving up
+ *	@param {number} [delayInterval=100] - minimum delay unit, exponentialBackoff() * intervalInMillis === delay
+ *	@param {number} [base=2] - base exponent for backoff algorithm
+ *	@param {number} [maxExponent=10] - in exponential backoff the number of attempts is used as the exponent, this is the maximum value that can be used even if retries exceed this value
+ *	@param {boolean} [unrefTimer=false] - retry delay is achieved using setTimeout(). by default it will be unrefed, so the process will	not wait for these timers to finish
  *
  */
-module.exports = (options) => exponentialBackoff(options || {})
+function factory({
+	maxAttempts = 100,
+	throwMaxAttemptsError = true,
+	delayInterval = 100,
+	base = 2,
+	maxExponent = 10,
+	unrefTimer = false,
+	_seed
+} = {}) {
 
-function exponentialBackoff({ delayInterval = 100, exponent = 2, unrefTimer = false, _seed }) {
-	let engine
-	if (_seed === undefined) {
-		debug('using auto seed')
-		engine = Random.engines.mt19937().autoSeed()
-	} else {
-		debug('using seed %d', _seed)
-		engine = Random.engines.mt19937().seed(_seed)
+	const rdg = new RandomDelayGenerator(_seed, base, delayInterval, maxExponent)
+
+	return (work) => {
+		return new Iterator(work, rdg, unrefTimer, maxAttempts, throwMaxAttemptsError)
+	}
+}
+
+class Iterator {
+	constructor(work, randomDelayGenerator, unrefTimer, maxAttempts, throwMaxAttemptsError) {
+		this._work = work
+		this._attemptNumber = 0
+		this._done = false
+		this._randomDelayGenerator = randomDelayGenerator
+		this._unrefTimer = unrefTimer
+		this._maxAttempts = maxAttempts - 1
+		this._throwMaxAttemptsError = throwMaxAttemptsError
 	}
 
-	let random = new Random(engine)
-	let retryCount = 0
-
-	return execute
-
-	function execute(work, ...args) {
-		debug('executing (retryCount: %d)', retryCount)
-
-		let cb = args.pop()
-		if (typeof(cb) !== 'function') {
-			throw new Error('must provide a callback as the last argument')
-		}
-
-		work(...args, function(err, ...args) {
-			debug('executed')
-
-			retryCount++
-
-			if (err) {
-				debug('error: %o', err)
-				return cb(err, ...args, schedule, retryCount)
-			}
-
-			cb(null, ...args, schedule, retryCount)
-		})
-
-		function schedule() {
-			let delay = randomDelaySlots() * delayInterval
-			debug('scheduling retry in %d %dms', delay)
-
-			let timer = setTimeout(() => {
-				args.push(cb)
-				execute(work, ...args)
-			}, delay)
-
-			if (unrefTimer) {
-				timer.unref()
+	async next() {
+		try {
+			this._result = await Promise.resolve(this._work(this._attemptNumber))
+			this._done = true
+		} catch (e) {
+			debug('error', e)			
+			this._error = e
+			this._done = this._attemptNumber === this._maxAttempts
+			if (this._done) {
+				this._done = true
+				if (this._throwMaxAttemptsError) {
+					throw new Error('operation failed, exceeded maximum attempts')
+				}
+			} else {
+				this._attemptNumber++
+				this._sleep()
 			}
 		}
+
+		return this
 	}
 
-	function randomDelaySlots() {
-		// wait anywhere between zero to exponent^retryCount inclusive (hence +1)
-		return random.integer(0, Math.pow(exponent, retryCount) - 1)
+	get lastError() {
+		return this._error
+	}
+
+	get result() {
+		return this._result
+	}
+
+	get value() {
+		return this._attemptNumber
+	}
+
+	get done() {
+		return this._done
+	}
+
+	[Symbol.asyncIterator]() {
+		return this
+	}
+
+	_sleep() {
+		const delay = this._randomDelayGenerator.next(this._attemptNumber)
+		debug(`sleeping ${delay}ms`)
+		return new Promise(resolve => this._timeout(resolve, delay))
+	}
+
+	_timeout(resolve, delayInMs) {
+		const timer = global.setTimeout(resolve, delayInMs)
+		if (this._unrefTimer) {
+			timer.unref()
+		}
+	}
+}
+
+class RandomDelayGenerator {
+	constructor(_seed, base, delayInterval, maxExponent) {
+		let engine
+		if (_seed === undefined) {
+			debug('using auto seed')
+			engine = Random.engines.mt19937().autoSeed()
+		} else {
+			debug('using seed %d', _seed)
+			engine = Random.engines.mt19937().seed(_seed)
+		}
+
+		this._random = new Random(engine)
+		this._maxExponent = maxExponent
+		this._base = base
+		this._delayInterval = delayInterval
+	}
+
+	next(attemptNumber) {
+		if (attemptNumber > this._maxExponent) {
+			attemptNumber = this._maxExponent
+		}
+
+		const delaySlots = this._random.integer(0, Math.pow(this._base, attemptNumber)) - 1
+
+		return delaySlots * this._delayInterval
 	}
 }
