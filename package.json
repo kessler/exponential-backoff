@@ -1,6 +1,6 @@
 {
   "name": "@kessler/exponential-backoff",
-  "version": "3.0.4",
+  "version": "3.0.5",
   "description": "Opinionated modern exponential backoff retry driver",
   "license": "MIT",
   "author": {
