@@ -23,7 +23,7 @@ test('after maxAttempts an error is thrown', async t => {
 
 	await t.throwsAsync(async () => {
 		await work
-	}, { instanceOf: Error, message: 'operation failed, exceeded maximum attempts' })
+	}, { instanceOf: backoff.OperationFailedError, message: 'operation failed, exceeded maximum attempts' })
 
 	t.is(count, 5)
 })
@@ -115,24 +115,9 @@ test('iteration will stop and an error is thrown after maxAttempts', async t => 
 
 	await t.throwsAsync(async () => {
 		for await (let attempt of iterator) {}
-	}, { instanceOf: Error, message: 'operation failed, exceeded maximum attempts' })
+	}, { instanceOf: backoff.OperationFailedError, message: 'operation failed, exceeded maximum attempts' })
 })
 
 function sleep(ms) {
 	return new Promise(resolve => setTimeout(resolve, ms))
 }
-
-/*
-
-const work = backoff(async () => {
-		await sleep(2000)
-		console.log('trying now...')
-		throw new Error()
-	})
-
-	for await (let attempt of work) {
-		console.log(attempt, 'asdsasdasdsds')
-	}
-
-	t.pass()
- */

@@ -4,6 +4,9 @@ const { name } = require('./package.json')
 const Random = require('random-js')
 const debug = require('debug')(name)
 
+/**
+ *	create a backoff driver and execute immediately, returning the result	
+ */
 module.exports = async (work, options) => {
 	const iterator = factory(options)(work)
 	for await (let attempt of iterator) {}
@@ -11,22 +14,27 @@ module.exports = async (work, options) => {
 }
 
 /**
- *	init code will only run once, work function can be changed many times. Good for code hotspots
- *	or for using the iteration interface.
+ *	create a backoff driver and return an iterator
  */
 module.exports.iterator = (work, options) => {
 	return factory(options)(work)
 }
 
+/**
+ *	create a cached version, allowing for multiple executions with slightly less initialization cost
+ */
 module.exports.cached = (options) => {
 	const createIterator = factory(options)
 	return async (work) => {
 		const iterator = createIterator(work)
-		for await (let attempt of iterator) {console.log(attempt)}
+		for await (let attempt of iterator) { console.log(attempt) }
 		return iterator.result
 	}
 }
 
+/**
+ *	create a cached version, allowing for multiple executions with slightly less initialization cost
+ */
 module.exports.cachedIterator = (options) => {
 	return factory(options)
 }
@@ -73,13 +81,13 @@ class Iterator {
 			this._result = await Promise.resolve(this._work(this._attemptNumber))
 			this._done = true
 		} catch (e) {
-			debug('error', e)			
+			debug('error', e)
 			this._error = e
 			this._done = this._attemptNumber === this._maxAttempts
 			if (this._done) {
 				this._done = true
 				if (this._throwMaxAttemptsError) {
-					throw new Error('operation failed, exceeded maximum attempts')
+					throw new OperationFailedError(e)
 				}
 			} else {
 				this._attemptNumber++
@@ -151,3 +159,16 @@ class RandomDelayGenerator {
 		return delaySlots * this._delayInterval
 	}
 }
+
+class OperationFailedError extends Error {
+	constructor(lastError) {
+		super('operation failed, exceeded maximum attempts')
+		this._lastError = lastError
+	}
+
+	get lastError() {
+		return lastError
+	}
+}
+
+module.exports.OperationFailedError = OperationFailedError
