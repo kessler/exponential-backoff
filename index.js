@@ -61,6 +61,7 @@ function factory({
 	const rdg = new RandomDelayGenerator(_seed, base, delayInterval, maxExponent)
 
 	return (work) => {
+		if (typeof work !== 'function') throw new TypeError('work must be a function')
 		return new Iterator(work, rdg, unrefTimer, maxAttempts, throwMaxAttemptsError)
 	}
 }
@@ -162,7 +163,7 @@ class RandomDelayGenerator {
 
 class OperationFailedError extends Error {
 	constructor(lastError) {
-		super('operation failed, exceeded maximum attempts')
+		super('exceeded maximum attempts, operation failed')
 		this._lastError = lastError
 	}
 
