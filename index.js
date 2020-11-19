@@ -27,7 +27,7 @@ module.exports.cached = (options) => {
 	const createIterator = factory(options)
 	return async (work) => {
 		const iterator = createIterator(work)
-		for await (let attempt of iterator) { console.log(attempt) }
+		for await (let attempt of iterator) {}
 		return iterator.result
 	}
 }
